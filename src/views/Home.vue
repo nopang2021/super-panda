@@ -2,6 +2,7 @@
   <div class="home">
     <h1>This is an Home page</h1>
     <el-button type="primary">el-button</el-button>
+    
   </div>
 </template>
 
@@ -9,8 +10,7 @@
 // @ is an alias to /src
 
 export default {
-  name: 'Home',
-  components: {
-  }
+  name: 'Home'
 }
+store.ethers.commit('initialized')
 </script>
