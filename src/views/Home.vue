@@ -8,7 +8,7 @@
       <div style="margin-top: 50px;">
         <el-table border v-if="showPandasData" :data="pandasData" stripe style="width: 100%">
           <el-table-column prop="asset_id" label="PandaId" width="180px" />
-          <el-table-column prop="name_pa" label="PandaName" width="180px"/>
+          <el-table-column prop="asset.data.rarity" label="Rarity" width="180px"/>
           <el-table-column label="Energy" width="100px">
             <template #default="scope">{{ parseInt(scope.row.energy/100) }}%</template>
           </el-table-column>
@@ -111,11 +111,13 @@ export default {
           upper_bound: this.$wax.userAccount,
         });
         // this.pandasData = result.rows;
-        for (let index = 0; index < result.rows.length; index++) {
-          if (result.rows[index].is_in_slot == 1){
-            this.pandasData.push(result.rows[index]);
+        result.rows.forEach(async element => {
+          if (element.is_in_slot == 1) {
+            const asset = await this.$assetApi.getAsset(element.asset_id);
+            element.asset = asset;
+            this.pandasData.push(element);
           }
-        }
+        });
         this.showPandasData = true;
         this.logmsg += (JSON.stringify(result, null, 2))+'\r\n';
       } catch (error) {
