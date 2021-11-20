@@ -70,9 +70,8 @@ export default {
     FlipDown
   },
   methods:{
-    show(){
-      // console.log(this.$wax);
-      
+    show_logmsg(msg){
+      this.logmsg = msg + '\r\n' +this.logmsg;      
     },
     async loginWallet(){
       try {
@@ -82,7 +81,7 @@ export default {
         this.isNotLogin = false;
         this.$notify({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", type: "success"});
       } catch (error) {
-        this.logmsg += error;
+        this.show_logmsg(error);
         this.$notify({title:'Login Error', message: error, type: 'error'});
       }
     },
@@ -97,7 +96,7 @@ export default {
         });
         return e;
       } catch (error) {
-        this.logmsg += error;
+        this.show_logmsg(error);
         this.$notify({title:'Get Panda Object Error', message: error, type: 'error'});
       }
 
@@ -108,7 +107,7 @@ export default {
         this.getSlots();
         await sleep(1000);
       } catch (error) {
-        this.logmsg += error;
+        this.show_logmsg(error);
         this.$notify({title:'fresh Error', message: error, type: 'error'});
       }
       
@@ -133,16 +132,21 @@ export default {
           blocksBehind: 3,
           expireSeconds: 30
         });
-        this.logmsg += (JSON.stringify(result, null, 2))+'\r\n';
+        console.log('toAdventure.result', result);
+        if (result.processed.action_traces.length == 2){
+          this.show_logmsg(result.processed.action_traces[1].inline_traces[0].act.data.quantity);
+        }else{
+          this.show_logmsg('0 BAM');
+        }
         this.fresh(asset_id);
       } catch (error) {
-        this.logmsg += error;
+        this.show_logmsg(error);
         this.$notify({title:'Adventure Error', message: error, type: 'error'});
       }
     },
     async getSlots(){
       try {
-        this.showPandasData = false;
+        
         // getSlots
         var result = await this.$wax.rpc.get_table_rows({
           json:true,
@@ -189,10 +193,11 @@ export default {
             }
           }
         });
+        this.showPandasData = false;
         this.showPandasData = true;
         // console.log('pandasData:', this.pandasData);
       } catch (error) {
-        this.logmsg += error;
+        this.show_logmsg(error);
         this.$notify({title:'Get Slots Error', message: error, type: 'error'});
       }
     },
@@ -204,6 +209,7 @@ export default {
         this.userAccount = this.$wax.userAccount;
         this.pubKeys = this.$wax.pubKeys;
         this.isNotLogin = false;
+        this.status = 'Welcome Back! Dear ' + this.userAccount;
       }else{
         this.status = 'Your account not enable Auto-Logged in, Please Login your Wax Wallet';
       }
