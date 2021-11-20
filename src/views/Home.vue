@@ -85,9 +85,6 @@ export default {
       }
     },
     async toAdventure(asset_id){
-      console.log(asset_id);
-    },
-    async testSign(){
       try {
         const result = await this.$wax.api.transact({
           actions: [{
@@ -98,8 +95,8 @@ export default {
                 permission: 'active',
               }],
               data: { // action argments
-                assoc_id: 1099571217682, // panda_id
-                signing_value: 81335621487632, //a random value
+                assoc_id: asset_id, // panda_id
+                signing_value: Math.floor(Math.random()*10**14)+1 , //a random value
                 username: this.$wax.userAccount
               },
           }]
@@ -108,13 +105,13 @@ export default {
           expireSeconds: 30
         });
         this.logmsg += (JSON.stringify(result, null, 2))+'\r\n';
+        this.getSlots();
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'Sign Transcation Error', message: error, type: 'error'});
       }
     },
     async getSlots(){
-      
       try {
         // getSlots
         var result = await this.$wax.rpc.get_table_rows({
@@ -133,7 +130,7 @@ export default {
         });
         const slotSort = result.rows[0].slots_count
         this.pandasData.length = result.rows[0].max_slots;
-        console.log('slotSort', slotSort);
+        // console.log('slotSort', slotSort);
 
         // get pandas
         result = await this.$wax.rpc.get_table_rows({
@@ -163,7 +160,7 @@ export default {
           }
         });
         this.showPandasData = true;
-        console.log('pandasData:', this.pandasData);
+        // console.log('pandasData:', this.pandasData);
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'Sign Transcation Error', message: error, type: 'error'});
