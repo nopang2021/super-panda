@@ -14,7 +14,7 @@
           </el-table-column>
           <el-table-column label="Time" width="150px">
             <template #default="scope">
-              <FlipDown :type="3" :endDate="scope.row.timer*1000"  @timeUp="toAdventure()"></FlipDown> 
+              <FlipDown type="3" :endDate="scope.row.timer*1000"  @timeUp="toAdventure(scope.row.asset_id)"></FlipDown> 
             </template>
           </el-table-column>
         </el-table>
@@ -34,7 +34,7 @@
 <script>
 // @ is an alias to /src
 import { ElNotification } from 'element-plus';
-import { FlipDown } from '@/components/vue-flip-down.vue';
+import FlipDown from '@/components/vue-flip-down.vue';
 
 export default {
   name: 'Home',
@@ -67,6 +67,9 @@ export default {
         this.logmsg += error;
         ElNotification({title:'Login Error', message: error, type: 'error'});
       }
+    },
+    async toAdventure(asset_id){
+      console.log(asset_id);
     },
     async testSign(){
       try {
@@ -110,24 +113,20 @@ export default {
           table_key: "",
           upper_bound: this.$wax.userAccount,
         });
-        // this.pandasData = result.rows;
+        this.pandasData = [];
         result.rows.forEach(async element => {
           if (element.is_in_slot == 1) {
-            const asset = await this.$assetApi.getAsset(element.asset_id);
-            element.asset = asset;
+            element.asset = await this.$assetApi.getAsset(element.asset_id);
             this.pandasData.push(element);
           }
         });
         this.showPandasData = true;
-        this.logmsg += (JSON.stringify(result, null, 2))+'\r\n';
+        console.log(this.pandasData);
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'Sign Transcation Error', message: error, type: 'error'});
       }
     },
-    async getPandaInfo(pandaId){
-      console.log(pandaId);
-    }
   },
   created: async function(){
     // try to auto-logged
