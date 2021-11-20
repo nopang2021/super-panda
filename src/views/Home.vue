@@ -84,6 +84,35 @@ export default {
         ElNotification({title:'Login Error', message: error, type: 'error'});
       }
     },
+    async getPandaObj(asset_id){
+      try {
+        this.pandasData.forEach(element => {
+          if (element.assoc_id == asset_id){
+            return element;
+          }
+        });
+        return null;
+      } catch (error) {
+        this.logmsg += error;
+        ElNotification({title:'Get Panda Object Error', message: error, type: 'error'});
+      }
+
+    },
+    async fresh(asset_id){
+      try {
+        let firsttime = this.getPandaObj(asset_id).row.timer
+        // parse euqal
+        let parsetime = 1;
+        while (parsetime != firsttime) {
+          this.getSlots();
+          parsetime = this.getPandaObj(asset_id).row.timer
+        }
+      } catch (error) {
+        this.logmsg += error;
+        ElNotification({title:'fresh Error', message: error, type: 'error'});
+      }
+      
+    },
     async toAdventure(asset_id){
       try {
         const result = await this.$wax.api.transact({
@@ -105,10 +134,10 @@ export default {
           expireSeconds: 30
         });
         this.logmsg += (JSON.stringify(result, null, 2))+'\r\n';
-        this.getSlots();
+        this.fresh(asset_id);
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'Sign Transcation Error', message: error, type: 'error'});
+        ElNotification({title:'Adventure Error', message: error, type: 'error'});
       }
     },
     async getSlots(){
@@ -163,7 +192,7 @@ export default {
         // console.log('pandasData:', this.pandasData);
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'Sign Transcation Error', message: error, type: 'error'});
+        ElNotification({title:'Get Slots Error', message: error, type: 'error'});
       }
     },
   },
