@@ -1,13 +1,29 @@
 <template>
   <div class="home">
     <h1>{{status}}</h1>
-    
     <div style="width: 800px; margin: auto;">
       <el-button  type="primary" v-if="isNotLogin" @click="loginWallet()">Login Wax Wallet</el-button>
       <el-button  type="warning" v-else @click="getSlots()">Get Your Panda Slots</el-button>
       <div style="margin-top: 50px;">
         <el-table border v-if="showPandasData" :data="pandasData" stripe style="width: 100%">
-          <el-table-column prop="asset_id" label="PandaId" width="180px" />
+          <el-table-column prop="asset_id" label="PandaId" width="160px" />
+          <el-table-column label="Img" width="160px">
+            <template #default="scope">
+              <el-image
+                style="width: 100px; height: 100px"
+                :src="'https://media.wax.io/'+scope.row.asset.data.img+'/'"
+                >
+                <template #placeholder>
+                  <div style="width: 100%; height: 100%" 
+                    element-loading-background="rgba(192,192,192,0.3)" 
+                    v-loading="true" 
+                    element-loading-text="Loading..."
+                    >
+                  </div>
+                </template>
+              </el-image>
+            </template>
+          </el-table-column>
           <el-table-column prop="asset.data.rarity" label="Rarity" width="180px"/>
           <el-table-column label="Energy" width="100px">
             <template #default="scope">{{ parseInt(scope.row.energy/100) }}%</template>
@@ -98,8 +114,29 @@ export default {
       }
     },
     async getSlots(){
+      
       try {
-        const result = await this.$wax.rpc.get_table_rows({
+        // getSlots
+        var result = await this.$wax.rpc.get_table_rows({
+          json:true,
+          code:"nftpandawofg",
+          scope:"nftpandawofg",
+          table:"usersnew",
+          table_key:"",
+          lower_bound: this.$wax.userAccount,
+          upper_bound: this.$wax.userAccount,
+          index_position: 1,
+          key_type: "",
+          limit: 1,
+          reverse: false,
+          show_payer: false
+        });
+        const slotSort = result.rows[0].slots_count
+        this.pandasData.length = result.rows[0].max_slots;
+        console.log('slotSort', slotSort);
+
+        // get pandas
+        result = await this.$wax.rpc.get_table_rows({
           code: "nftpandawofg",
           index_position: 2,
           json: true,
@@ -113,15 +150,16 @@ export default {
           table_key: "",
           upper_bound: this.$wax.userAccount,
         });
-        this.pandasData = [];
+        
         result.rows.forEach(async element => {
           if (element.is_in_slot == 1) {
+
             element.asset = await this.$assetApi.getAsset(element.asset_id);
             this.pandasData.push(element);
           }
         });
         this.showPandasData = true;
-        console.log(this.pandasData);
+        console.log('pandasData:', this.pandasData);
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'Sign Transcation Error', message: error, type: 'error'});
