@@ -51,6 +51,7 @@
 <script>
 // @ is an alias to /src
 import FlipDown from '@/components/vue-flip-down.vue';
+import { h } from 'vue';
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -133,15 +134,17 @@ export default {
           expireSeconds: 30
         });
         console.log('toAdventure.result', result);
+        let bam;
         if (result.processed.action_traces.length == 2){
           if (result.processed.action_traces[1].inline_traces.length != 0) {
-            this.show_logmsg(asset_id + 'Got ' + result.processed.action_traces[1].inline_traces[0].act.data.quantity);
+            bam = result.processed.action_traces[1].inline_traces[0].act.data.quantity;
           }else{
-            this.show_logmsg(asset_id + 'Got 0 BAM');
+            bam = '0 BAM';
           }
         }else{
-          this.show_logmsg(asset_id + 'Got 0 BAM');
+          bam= '0 BAM';
         }
+        this.show_logmsg('Panda-'+ asset_id + 'Got ' + bam);
         this.fresh(asset_id);
       } catch (error) {
         this.show_logmsg(error);
@@ -209,13 +212,24 @@ export default {
     },
   },
   created: async function(){
-    console.log('this version build at UTC+8 2021-11-21 06:07');
+    this.$message.warning({
+      message: h('p', null, [
+        h('span', null, 'This version Build at UTC+8 2021-11-21 06:58, If you wanna use '),
+        h('i', { style: 'color: teal' }, ' Latest '),
+        h('span', null, ' version , Please press '),
+        h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
+        h('span', null, ' to fresh cache.')
+      ]),
+      duration: 0,
+      showClose: true
+    });
     // try to auto-logged
     let isAutoLoginAvailable = await this.$wax.isAutoLoginAvailable(); 
       if (isAutoLoginAvailable) { 
         this.userAccount = this.$wax.userAccount;
         this.pubKeys = this.$wax.pubKeys;
         this.isNotLogin = false;
+        this.$notify.success({title:"Success", message: "Auto-Login Wax Wallet Success!Welcome Back!", duration: 0});
         this.status = 'Welcome Back! Dear ' + this.userAccount;
       }else{
         this.status = 'Your account not enable Auto-Logged in, Please Login your Wax Wallet';
