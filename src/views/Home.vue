@@ -150,12 +150,16 @@ export default {
           table_key: "",
           upper_bound: this.$wax.userAccount,
         });
-        
         result.rows.forEach(async element => {
           if (element.is_in_slot == 1) {
-
-            element.asset = await this.$assetApi.getAsset(element.asset_id);
-            this.pandasData.push(element);
+            // get panda's slotnumber
+            for (let index = 0; index < slotSort.length; index++) {
+              const pid = slotSort[index];
+              if (pid == element.asset_id){
+                element.asset = await this.$assetApi.getAsset(element.asset_id);
+                this.pandasData[index] = element;
+              }
+            }
           }
         });
         this.showPandasData = true;
@@ -178,5 +182,4 @@ export default {
       }
   }
 }
-store.ethers.commit('initialized')
 </script>
