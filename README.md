@@ -1,4 +1,4 @@
-# dogesfood-ico
+# super-panda
 
 ## Project setup
 ```
