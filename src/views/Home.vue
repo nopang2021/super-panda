@@ -50,7 +50,6 @@
 
 <script>
 // @ is an alias to /src
-import { ElNotification } from 'element-plus';
 import FlipDown from '@/components/vue-flip-down.vue';
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
@@ -82,10 +81,9 @@ export default {
         this.status = 'Welcome Back! Dear ' + this.userAccount;
         this.isNotLogin = false;
         this.$notify({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", type: "success"});
-        ElNotification({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", type: "success"});
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'Login Error', message: error, type: 'error'});
+        this.$notify({title:'Login Error', message: error, type: 'error'});
       }
     },
     async getPandaObj(asset_id){
@@ -100,7 +98,7 @@ export default {
         return e;
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'Get Panda Object Error', message: error, type: 'error'});
+        this.$notify({title:'Get Panda Object Error', message: error, type: 'error'});
       }
 
     },
@@ -111,7 +109,7 @@ export default {
         await sleep(1000);
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'fresh Error', message: error, type: 'error'});
+        this.$notify({title:'fresh Error', message: error, type: 'error'});
       }
       
     },
@@ -139,7 +137,7 @@ export default {
         this.fresh(asset_id);
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'Adventure Error', message: error, type: 'error'});
+        this.$notify({title:'Adventure Error', message: error, type: 'error'});
       }
     },
     async getSlots(){
@@ -195,7 +193,7 @@ export default {
         // console.log('pandasData:', this.pandasData);
       } catch (error) {
         this.logmsg += error;
-        ElNotification({title:'Get Slots Error', message: error, type: 'error'});
+        this.$notify({title:'Get Slots Error', message: error, type: 'error'});
       }
     },
   },
