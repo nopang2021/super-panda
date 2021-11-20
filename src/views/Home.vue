@@ -11,7 +11,8 @@
             <template #default="scope">
               <el-image
                 style="width: 100px; height: 100px"
-                :src="'https://media.wax.io/'+scope.row.asset.data.img+'/'"
+                referrerPolicy="no-referrer"
+                :src="'https://ipfs.atomichub.io/ipfs/'+scope.row.asset.data.img+'/'"
                 >
                 <template #placeholder>
                   <div style="width: 100%; height: 100%" 
@@ -80,7 +81,8 @@ export default {
         this.pubKeys = this.$wax.pubKeys;
         this.status = 'Welcome Back! Dear ' + this.userAccount;
         this.isNotLogin = false;
-        ElNotification({title:'Success', message:'Login Wax Wallet Success!Welcome Back!', type:'success'});
+        this.$notify({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", type: "success"});
+        ElNotification({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", type: "success"});
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'Login Error', message: error, type: 'error'});
@@ -102,16 +104,11 @@ export default {
       }
 
     },
-    async fresh(asset_id){
+    async fresh(){
       try {
-        let firsttime = this.getPandaObj(asset_id).row.timer
-        // parse euqal
-        let parsetime = 1;
-        while (parsetime != firsttime) {
-          this.getSlots();
-          parsetime = this.getPandaObj(asset_id).row.timer
-          await sleep(1000);
-        }
+        await sleep(1000);
+        this.getSlots();
+        await sleep(1000);
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'fresh Error', message: error, type: 'error'});
@@ -147,6 +144,7 @@ export default {
     },
     async getSlots(){
       try {
+        this.showPandasData = false;
         // getSlots
         var result = await this.$wax.rpc.get_table_rows({
           json:true,
