@@ -52,6 +52,8 @@
 import { ElNotification } from 'element-plus';
 import FlipDown from '@/components/vue-flip-down.vue';
 
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+
 export default {
   name: 'Home',
   data() {
@@ -86,12 +88,14 @@ export default {
     },
     async getPandaObj(asset_id){
       try {
+        let e = {};
         this.pandasData.forEach(element => {
           if (element.assoc_id == asset_id){
-            return element;
+            e = element;
+            return;
           }
         });
-        return null;
+        return e;
       } catch (error) {
         this.logmsg += error;
         ElNotification({title:'Get Panda Object Error', message: error, type: 'error'});
@@ -106,6 +110,7 @@ export default {
         while (parsetime != firsttime) {
           this.getSlots();
           parsetime = this.getPandaObj(asset_id).row.timer
+          await sleep(1000);
         }
       } catch (error) {
         this.logmsg += error;
