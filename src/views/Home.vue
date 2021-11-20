@@ -71,7 +71,7 @@ export default {
   },
   methods:{
     show_logmsg(msg){
-      this.logmsg = msg + '\r\n' +this.logmsg;      
+      this.logmsg = msg + '\r\n</br>' + this.logmsg;      
     },
     async loginWallet(){
       try {
@@ -134,14 +134,20 @@ export default {
         });
         console.log('toAdventure.result', result);
         if (result.processed.action_traces.length == 2){
-          this.show_logmsg(result.processed.action_traces[1].inline_traces[0].act.data.quantity);
+          if (result.processed.action_traces[1].inline_traces.length != 0) {
+            this.show_logmsg(asset_id + 'Got ' + result.processed.action_traces[1].inline_traces[0].act.data.quantity);
+          }else{
+            this.show_logmsg(asset_id + 'Got 0 BAM');
+          }
         }else{
-          this.show_logmsg('0 BAM');
+          this.show_logmsg(asset_id + 'Got 0 BAM');
         }
         this.fresh(asset_id);
       } catch (error) {
         this.show_logmsg(error);
         this.$notify({title:'Adventure Error', message: error, type: 'error'});
+        this.sleep(1000);
+        this.fresh(asset_id);
       }
     },
     async getSlots(){
@@ -203,6 +209,7 @@ export default {
     },
   },
   created: async function(){
+    console.log('this version build at UTC+8 2021-11-21 03:49');
     // try to auto-logged
     let isAutoLoginAvailable = await this.$wax.isAutoLoginAvailable(); 
       if (isAutoLoginAvailable) { 
