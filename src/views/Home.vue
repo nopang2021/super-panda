@@ -41,7 +41,7 @@
               <span>OutPut</span>
             </div>
           </template>
-          <div>{{ logmsg }}</div>
+          <div v-html="logmsg"></div>
         </el-card>
       </div>
     </div>
@@ -71,7 +71,7 @@ export default {
   },
   methods:{
     show_logmsg(msg){
-      this.logmsg = msg + '\r\n</br>' + this.logmsg;      
+      this.logmsg = msg + '\r\n<br>' + this.logmsg;      
     },
     async loginWallet(){
       try {
@@ -79,10 +79,10 @@ export default {
         this.pubKeys = this.$wax.pubKeys;
         this.status = 'Welcome Back! Dear ' + this.userAccount;
         this.isNotLogin = false;
-        this.$notify({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", type: "success"});
+        this.$notify.success({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", duration: 0});
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify({title:'Login Error', message: error, type: 'error'});
+        this.$notify.error({title:'Login Error', message: error});
       }
     },
     async getPandaObj(asset_id){
@@ -97,7 +97,7 @@ export default {
         return e;
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify({title:'Get Panda Object Error', message: error, type: 'error'});
+        this.$notify.error({title:'Get Panda Object Error', message: error});
       }
 
     },
@@ -108,7 +108,7 @@ export default {
         await sleep(1000);
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify({title:'fresh Error', message: error, type: 'error'});
+        this.$notify.error({title:'fresh Error', message: error});
       }
       
     },
@@ -145,7 +145,7 @@ export default {
         this.fresh(asset_id);
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify({title:'Adventure Error', message: error, type: 'error'});
+        this.$notify.error({title:'Adventure Error', message: error});
         this.sleep(1000);
         this.fresh(asset_id);
       }
@@ -204,12 +204,12 @@ export default {
         // console.log('pandasData:', this.pandasData);
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify({title:'Get Slots Error', message: error, type: 'error'});
+        this.$notify.error({title:'Get Slots Error', message: error});
       }
     },
   },
   created: async function(){
-    console.log('this version build at UTC+8 2021-11-21 03:49');
+    console.log('this version build at UTC+8 2021-11-21 06:07');
     // try to auto-logged
     let isAutoLoginAvailable = await this.$wax.isAutoLoginAvailable(); 
       if (isAutoLoginAvailable) { 
