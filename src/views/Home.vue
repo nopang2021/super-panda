@@ -3,46 +3,107 @@
     <h1>{{status}}</h1>
     <div style="width: 800px; margin: auto;">
       <el-button  type="primary" v-if="isNotLogin" @click="loginWallet()">Login Wax Wallet</el-button>
-      <el-button  type="warning" v-else @click="getSlots()">Get Your Panda Slots</el-button>
+      <el-button  type="warning" v-else @click="getSlots()">Get Your Power!</el-button>
       <div style="margin-top: 50px;">
-        <el-table border v-if="showPandasData" :data="pandasData" stripe style="width: 100%">
-          <el-table-column prop="asset_id" label="PandaId" width="160px" />
-          <el-table-column label="Img" width="160px">
-            <template #default="scope">
-              <el-image
-                style="width: 100px; height: 100px"
-                referrerPolicy="no-referrer"
-                :src="'https://ipfs.atomichub.io/ipfs/'+scope.row.asset.data.img+'/'"
-                >
-                <template #placeholder>
-                  <div style="width: 100%; height: 100%" 
-                    element-loading-background="rgba(192,192,192,0.3)" 
-                    v-loading="true" 
-                    element-loading-text="Loading..."
+        <el-tabs type="border-card">
+          <!--Heros-->
+          <el-tab-pane  label="Heros">
+              <template #label>
+              <span>
+                <el-icon><calendar /></el-icon>Heros
+              </span>
+            </template>
+            <el-table border v-if="showPandasData" :data="pandasData" stripe style="width: 100%">
+              <el-table-column prop="asset_id" label="PandaId" width="160px" />
+              <el-table-column label="Img" width="160px">
+                <template #default="scope">
+                  <el-image
+                    style="width: 100px; height: 100px"
+                    referrerPolicy="no-referrer"
+                    :src="'https://ipfs.atomichub.io/ipfs/'+scope.row.asset.data.img+'/'"
                     >
-                  </div>
+                    <template #placeholder>
+                      <div style="width: 100%; height: 100%" 
+                        element-loading-background="rgba(192,192,192,0.3)" 
+                        v-loading="true" 
+                        element-loading-text="Loading..."
+                        >
+                      </div>
+                    </template>
+                  </el-image>
                 </template>
-              </el-image>
+              </el-table-column>
+              <el-table-column prop="asset.data.rarity" label="Rarity" width="180px"/>
+              <el-table-column label="Energy" width="100px">
+                <template #default="scope">{{ parseInt(scope.row.energy/100) }}%</template>
+              </el-table-column>
+              <el-table-column label="Time" width="150px">
+                <template #default="scope">
+                  <FlipDown type="3" :endDate="scope.row.timer*1000"  @timeUp="toAdventure(scope.row.asset_id)"></FlipDown> 
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+          <!--Foods-->
+          <el-tab-pane label="Foods">
+            <template #label>
+              <span>
+                <el-icon><calendar /></el-icon>Foods
+              </span>
             </template>
-          </el-table-column>
-          <el-table-column prop="asset.data.rarity" label="Rarity" width="180px"/>
-          <el-table-column label="Energy" width="100px">
-            <template #default="scope">{{ parseInt(scope.row.energy/100) }}%</template>
-          </el-table-column>
-          <el-table-column label="Time" width="150px">
-            <template #default="scope">
-              <FlipDown type="3" :endDate="scope.row.timer*1000"  @timeUp="toAdventure(scope.row.asset_id)"></FlipDown> 
+            <el-row v-if="foodsData">
+              <el-col
+                v-for="x in foodsData"
+                :key="x"
+                :span="6"
+                style="margin-left: 10px;"
+              >
+                <el-card
+                  :body-style="{margin: '14px'}"
+                >
+                  <el-image
+                  style="width: 100px; height: 100px"
+                  referrerPolicy="no-referrer"
+                  :src="'https://ipfs.atomichub.io/ipfs/'+x[0].img+'/'"
+                  >
+                    <template #placeholder>
+                    <div style="width: 100%; height: 100%" 
+                      element-loading-background="rgba(192,192,192,0.3)" 
+                      v-loading="true" 
+                      element-loading-text="Loading..."
+                      >
+                    </div>
+                    </template>
+                  </el-image>
+                  <div style="padding 14px;">
+                      <span>{{ x[0].rarity }} Food</span><br>
+                      <el-button type="text">Left {{x.length}}</el-button>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+          <!--Config-->
+          <el-tab-pane label="Config">Config</el-tab-pane>
+          <!--Output-->
+          <el-tab-pane label="Output">
+            <template #label>
+              <span>
+                <el-icon><calendar /></el-icon>Output
+              </span>
             </template>
-          </el-table-column>
-        </el-table>
-        <el-card class="box-card" style="margin-top: 50px;">
-          <template #header>
-            <div class="card-header">
-              <span>OutPut</span>
-            </div>
-          </template>
-          <div v-html="logmsg"></div>
-        </el-card>
+            <el-card class="box-card" style="margin-top: 10px;">
+              <template #header>
+                <div class="card-header">
+                  <span>OutPut</span>
+                </div>
+              </template>
+              <div v-html="logmsg"></div>
+            </el-card>
+          </el-tab-pane>
+        </el-tabs>
+
+
       </div>
     </div>
   </div>
@@ -65,7 +126,8 @@ export default {
       isNotLogin : true,
       logmsg: "",
       showPandasData: false,
-      pandasData: []
+      pandasData: [],
+      foodsData: {}
     }
   },
   components: {
@@ -103,14 +165,14 @@ export default {
       }
 
     },
-    async fresh(){
+    async reload(){
       try {
         await sleep(1000);
         this.getSlots();
         await sleep(1000);
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify.error({title:'fresh Error', message: error});
+        this.$notify.error({title:'reload Error', message: error});
       }
       
     },
@@ -148,20 +210,47 @@ export default {
         }else{
           bam= '0.0000 BAM';
         }
-        this.show_logmsg(dayjs().format('YYYY-MM-DDTHH:mm:ssZ[Z]') + 'Panda-'+ asset_id + ' Got ' + bam);
-        this.fresh(asset_id);
+        this.show_logmsg(dayjs().format('YYYY-MM-DD HH:mm:ssZ') + ' Panda-'+ asset_id + ' Got ' + bam);
+        this.reload(asset_id);
       } catch (error) {
         this.show_logmsg(error);
         this.$notify.error({title:'Adventure Error', message: error});
         this.sleep(1000);
-        this.fresh(asset_id);
+        this.reload(asset_id);
+      }
+    },
+    async getFoods(){
+      try {
+        let result = await this.$assetApi.getAssets({
+          owner: "w2dxs.wam",
+          collection_name: "nftpandawaxp",
+          schema_name: "food",
+        });
+        result.forEach(element => {
+          let food = {
+            assetid: element.asset_id,
+            img: element.data.img,
+            rarity: element.data.rarity,
+          };
+          // is food's rarity exist
+          if (!this.foodsData[element.data.rarity]){
+            this.foodsData[element.data.rarity] = new Array();
+            
+          }
+          this.foodsData[element.data.rarity].push(food);
+        });
+        console.log('foodsData', this.foodsData);
+      } catch (error) {
+        this.show_logmsg(error);
+        this.$notify.error({title:'Get Foods Error', message: error});
       }
     },
     async getSlots(){
       try {
-        
+        // getFoods
+        this.getFoods()
         // getSlots
-        var result = await this.$wax.rpc.get_table_rows({
+        let result = await this.$wax.rpc.get_table_rows({
           json:true,
           code:"nftpandawofg",
           scope:"nftpandawofg",
@@ -222,7 +311,7 @@ export default {
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
-        h('span', null, ' to fresh cache.')
+        h('span', null, ' to reload cache.')
       ]),
       duration: 0,
       showClose: true
