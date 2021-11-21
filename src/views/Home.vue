@@ -52,6 +52,7 @@
 // @ is an alias to /src
 import FlipDown from '@/components/vue-flip-down.vue';
 import { h } from 'vue';
+import dayjs from 'dayjs';
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -134,17 +135,20 @@ export default {
           expireSeconds: 30
         });
         console.log('toAdventure.result', result);
-        let bam;
-        if (result.processed.action_traces.length == 2){
-          if (result.processed.action_traces[1].inline_traces.length != 0) {
-            bam = result.processed.action_traces[1].inline_traces[0].act.data.quantity;
-          }else{
-            bam = '0 BAM';
-          }
+        let bam = 0;
+        if (result.processed.action_traces.length != 0){
+          result.processed.action_traces.forEach(element => {
+            if (element.inline_traces.length != 0) {
+              bam = element.inline_traces[0].act.data.quantity;
+              return;
+            }else{
+              bam = '0.0000 BAM';
+            }
+          });
         }else{
-          bam= '0 BAM';
+          bam= '0.0000 BAM';
         }
-        this.show_logmsg('Panda-'+ asset_id + 'Got ' + bam);
+        this.show_logmsg(dayjs().format('YYYY-MM-DDTHH:mm:ssZ[Z]') + 'Panda-'+ asset_id + ' Got ' + bam);
         this.fresh(asset_id);
       } catch (error) {
         this.show_logmsg(error);
@@ -214,7 +218,7 @@ export default {
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-11-21 06:58, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-11-21 07:49, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
