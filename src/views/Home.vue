@@ -91,7 +91,7 @@
               </span>
             </template>
             
-            <div style="width: 400px; margin: 10px auto; padidng: auto;">
+            <div style="margin: 10px auto; padidng: auto;">
               <el-row>
                 <el-col :span="4"></el-col>
                 <el-col :span="8">Auto Adventure:</el-col>
@@ -125,8 +125,9 @@
                 </el-col>
                 <el-col :span="4"></el-col>
               </el-row>
-              <el-row style="margin-top: 10px;" >
-                <el-col :span="24">
+              <el-row >
+                <el-col :span="10" style="padding-top: 10px;"> Energy Below 10 Buy Quantity:</el-col>
+                <el-col :span="14">
                   <el-slider
                     v-if="isAutoBuyFood" 
                     v-model="autoBuyQuantity" 
@@ -184,7 +185,7 @@ export default {
       isAutoAdventure: true,
       isAutoFeedFood: true,
       isAutoBuyFood: true,
-      feedFoodEnergy: 20,
+      feedFoodEnergy: 10,
       autoBuyQuantity: 1,
     }
   },
@@ -395,7 +396,7 @@ export default {
       try {
         this.foodsData = {};
         let result = await this.$assetApi.getAssets({
-          owner: "w2dxs.wam",
+          owner: this.$wax.userAccount,
           collection_name: "nftpandawaxp",
           schema_name: "food",
         });
@@ -493,7 +494,7 @@ export default {
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-11-22 10:41, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-11-22 11:14, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
