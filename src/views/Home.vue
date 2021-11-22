@@ -8,9 +8,9 @@
         <el-tabs type="border-card">
           <!--Heros-->
           <el-tab-pane  label="Heros">
-              <template #label>
+            <template #label>
               <span>
-                <el-icon><calendar /></el-icon>Heros
+                <el-icon><user-filled /></el-icon>Heros
               </span>
             </template>
             <el-table border v-if="showPandasData" :data="pandasData" stripe style="width: 100%">
@@ -48,7 +48,7 @@
           <el-tab-pane label="Foods">
             <template #label>
               <span>
-                <el-icon><calendar /></el-icon>Foods
+                <el-icon><bowl /></el-icon>Foods
               </span>
             </template>
             <el-row v-if="foodsData">
@@ -84,7 +84,60 @@
             </el-row>
           </el-tab-pane>
           <!--Config-->
-          <el-tab-pane label="Config">Config</el-tab-pane>
+          <el-tab-pane label="Config">
+            <template #label>
+              <span>
+                <el-icon><cpu /></el-icon>Config
+              </span>
+            </template>
+            
+            <div style="width: 400px; margin: 10px auto; padidng: auto;">
+              <el-row>
+                <el-col :span="4"></el-col>
+                <el-col :span="8">Auto Adventure:</el-col>
+                <el-col :span="8">
+                  <el-switch
+                    v-model="isAutoAdventure" 
+                    active-color="#13ce66" 
+                  />
+                </el-col>
+                <el-col :span="4"></el-col>
+              </el-row>
+              <el-row style="margin-top: 10px;" >
+                <el-col :span="4"></el-col>
+                <el-col :span="8">Auto Feed Food:</el-col>
+                <el-col :span="8">
+                  <el-switch
+                    v-model="isAutoFeedFood" 
+                    active-color="#13ce66" 
+                  />
+                </el-col>
+                <el-col :span="4"></el-col>
+              </el-row>
+              <el-row style="margin-top: 10px;" >
+                <el-col :span="4"></el-col>
+                <el-col :span="8">Auto Buy Food:</el-col>
+                <el-col :span="8">
+                  <el-switch 
+                    v-model="isAutoBuyFood" 
+                    active-color="#13ce66" 
+                  />
+                </el-col>
+                <el-col :span="4"></el-col>
+              </el-row>
+              <el-row style="margin-top: 10px;" >
+                <el-col :span="24">
+                  <el-slider
+                    v-if="isAutoBuyFood" 
+                    v-model="autoBuyQuantity" 
+                    show-input
+                    :min="1"
+                    :max="10"
+                  />
+                </el-col>
+              </el-row>
+            </div>
+          </el-tab-pane>
           <!--Output-->
           <el-tab-pane label="Output">
             <template #label>
@@ -127,7 +180,12 @@ export default {
       logmsg: "",
       showPandasData: false,
       pandasData: [],
-      foodsData: {}
+      foodsData: {},
+      isAutoAdventure: true,
+      isAutoFeedFood: true,
+      isAutoBuyFood: true,
+      feedFoodEnergy: 20,
+      autoBuyQuantity: 1,
     }
   },
   components: {
@@ -135,7 +193,25 @@ export default {
   },
   methods:{
     show_logmsg(msg){
-      this.logmsg = msg + '\r\n<br>' + this.logmsg;      
+      this.logmsg = dayjs().format('YYYY-MM-DD HH:mm:ssZ') + ' ' + msg + '\r\n<br>' + this.logmsg;      
+    },
+    async getFoodCost(rarity, quantity){
+      switch (rarity) {
+        case "Common":
+          return quantity * 0.11;
+        case "Uncommon":
+          return quantity * 0.22;
+        case "Rare":
+          return quantity * 0.6;
+        case "Epic":
+          return quantity * 1;
+        case "Legendary":
+          return quantity * 4;
+        case "Mythic":
+          return quantity * 12;
+        default:
+          break;
+      }
     },
     async loginWallet(){
       try {
@@ -172,12 +248,108 @@ export default {
         await sleep(1000);
       } catch (error) {
         this.show_logmsg(error);
-        this.$notify.error({title:'reload Error', message: error});
+        this.$notify.error({title:'Reload Error', message: error});
       }
       
     },
+    async feedFood(asset_id, food_id){
+      try {
+        console.log({
+          actions: [{
+              account: 'atomicassets', // contract account
+              name: 'transfer', // contract action name
+              authorization: [{
+                actor: this.$wax.userAccount,
+                permission: 'active',
+              }],
+              data: { // action argments
+                asset_ids: [food_id], // food_id
+                memo: `eatpanda ${asset_id} ${food_id} `,
+                from: this.$wax.userAccount,
+                to: 'nftpandawofg',
+              },
+          }],
+        },{
+          blocksBehind: 3,
+          expireSeconds: 30
+        });
+        const result = await this.$wax.api.transact(
+        {
+          actions: [{
+              account: 'atomicassets', // contract account
+              name: 'transfer', // contract action name
+              authorization: [{
+                actor: this.$wax.userAccount,
+                permission: 'active',
+              }],
+              data: { // action argments
+                asset_ids: [food_id], // food_id
+                memo: `eatpanda ${asset_id} ${food_id} `,
+                from: this.$wax.userAccount,
+                to: 'nftpandawofg',
+              },
+          }],
+        },{
+          blocksBehind: 3,
+          expireSeconds: 30
+        }); 
+        console.log('Feed Food:',result);
+        this.$notify.success({title:'Feed Food Success', message: `Panda ${asset_id} Feed Food Success`});
+        // refresh foodsData
+        this.refreshFoodsData();
+      } catch (error) {
+        this.show_logmsg(error);
+        this.$notify.error({title:'Feed Food Error', message: error});
+      }
+    },
+    async refreshFoodsData() {
+      try {
+        let foodsData_json = JSON.stringify(this.foodsData);
+        while (foodsData_json == JSON.stringify(this.foodsData)){
+          await sleep(1000);
+          this.getFoods();
+        }
+      } catch (error) {
+        this.show_logmsg(error);
+        this.$notify.error({title:'Refresh FoodsData Error', message: error});
+      }
+    },
+    async buyFood(rarity, quantity){
+      try {
+        const result = await this.$wax.api.transact({
+          actions: [{
+              account: 'nftpandabamb', // contract account
+              name: 'transfer', // contract action name
+              authorization: [{
+                actor: this.$wax.userAccount,
+                permission: 'active',
+              }],
+              data: { // action argments
+                memo: `buyeat ${rarity.toLowerCase()} ${quantity} `,
+                quantity: `${(await this.getFoodCost(rarity,quantity)).toFixed(4)} BAM`,
+                from: this.$wax.userAccount,
+                to: 'nftpandawofg',
+              },
+          }],
+        },{
+          blocksBehind: 3,
+          expireSeconds: 30
+        });
+        console.log('buyFood:',result);
+        this.show_logmsg(`Buy ${rarity} Food * ${quantity} Success`);
+        this.$notify.success({title:'Buy Food Success', message: `Buy ${rarity} Food * ${quantity} Success`});
+        // refresh foodsData
+        this.refreshFoodsData();
+      } catch (error) {
+        this.show_logmsg(error);
+        this.$notify.error({title:'Buy Food Error', message: error});
+      }
+    },
     async toAdventure(asset_id){
       try {
+        if (!this.isAutoAdventure){
+          return;
+        }
         const result = await this.$wax.api.transact({
           actions: [{
               account: 'nftpandawofg', // contract account
@@ -192,11 +364,11 @@ export default {
                 username: this.$wax.userAccount
               },
           }]
-          }, {
+        }, {
           blocksBehind: 3,
           expireSeconds: 30
         });
-        console.log('toAdventure.result', result);
+        // console.log('toAdventure.result', result);
         let bam = 0;
         if (result.processed.action_traces.length != 0){
           result.processed.action_traces.forEach(element => {
@@ -208,19 +380,20 @@ export default {
             }
           });
         }else{
-          bam= '0.0000 BAM';
+          bam = '0.0000 BAM';
         }
-        this.show_logmsg(dayjs().format('YYYY-MM-DD HH:mm:ssZ') + ' Panda-'+ asset_id + ' Got ' + bam);
+        this.show_logmsg('Panda-'+ asset_id + ' Got ' + bam);
         this.reload(asset_id);
       } catch (error) {
         this.show_logmsg(error);
         this.$notify.error({title:'Adventure Error', message: error});
-        this.sleep(1000);
+        await sleep(1000);
         this.reload(asset_id);
       }
     },
     async getFoods(){
       try {
+        this.foodsData = {};
         let result = await this.$assetApi.getAssets({
           owner: "w2dxs.wam",
           collection_name: "nftpandawaxp",
@@ -235,7 +408,6 @@ export default {
           // is food's rarity exist
           if (!this.foodsData[element.data.rarity]){
             this.foodsData[element.data.rarity] = new Array();
-            
           }
           this.foodsData[element.data.rarity].push(food);
         });
@@ -288,8 +460,22 @@ export default {
             // get panda's slotnumber
             for (let index = 0; index < slotSort.length; index++) {
               const pid = slotSort[index];
-              if (pid == element.asset_id){
+              if (pid == element.asset_id) {
                 element.asset = await this.$assetApi.getAsset(element.asset_id);
+                // is Auto-Feed Food?
+                if (this.isAutoFeedFood) {
+                  if (parseInt(element.energy/100) <= this.feedFoodEnergy) {
+                    // is have rarity food?
+                    if (this.foodsData[element.asset.data.rarity]) {
+                      // feed food
+                      await this.feedFood(element.asset_id, this.foodsData[element.asset.data.rarity][0].assetid);
+                    }else{
+                      this.show_logmsg(`${element.asset.data.rarity} Food dont enough, We need more.`);
+                      // to buy food
+                      await this.buyFood(element.asset.data.rarity, this.autoBuyQuantity);
+                    }
+                  }
+                }
                 this.pandasData[index] = element;
               }
             }
