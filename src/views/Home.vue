@@ -152,7 +152,7 @@
                   <span>OutPut</span>
                 </div>
               </template>
-              <div v-html="logmsg"></div>
+              <div style="text-align: left;" v-html="logmsg"></div>
             </el-card>
           </el-tab-pane>
         </el-tabs>
@@ -210,9 +210,16 @@ export default {
     },
     async getSlots(){
       try {
+        // new account init
+        // stake cpu ram net 
+        // buy promo hero
+        // login panda
+        // use panda in game
+        // insert panda in slot
+        // pop adventure,usefood,buyfood Auto Sign 
         // getFoods
         await this.getFoods()
-        let new_pandasData;
+        this.pandasData = [];
         // getSlots
         let result = await this.$wax.rpc.get_table_rows({
           json:true,
@@ -228,9 +235,9 @@ export default {
           reverse: false,
           show_payer: false
         });
+        console.log('slotSort Result:', result);
+        this.pandasData.length = result.rows[0].max_slots;
         const slotSort = result.rows[0].slots_count
-        new_pandasData.length = result.rows[0].max_slots;
-        // console.log('slotSort', slotSort);
 
         // get pandas
         result = await this.$wax.rpc.get_table_rows({
@@ -247,25 +254,28 @@ export default {
           table_key: "",
           upper_bound: this.$wax.userAccount,
         });
+        console.log('pandas Result:', result);
+
         result.rows.forEach(async element => {
           if (element.is_in_slot == 1) {
             // get panda's slotnumber
-            for (let slotnumber = 0; slotnumber < slotSort.length; slotnumber){
+            for (let slotnumber = 0; slotnumber < slotSort.length; slotnumber++){
               let panda_id = slotSort[slotnumber];
               if (panda_id == element.asset_id) {
                 element.asset = await this.$assetApi.getAsset(element.asset_id);
-                new_pandasData[slotnumber] = element;
+                this.pandasData[slotnumber] = element;
               }
             }
           }
         });
+        
         this.showPandasData = false;
-        this.pandasData = new_pandasData;
         this.showPandasData = true;
         console.log('pandasData:', this.pandasData);
+
         // is Auto-Feed Food?
         if (this.isAutoFeedFood) {
-          await this.feedFood();
+          this.feedFood(); // don't await
         }
       } catch (error) {
         this.show_logmsg('Get Slots Error: '+error);
@@ -274,7 +284,12 @@ export default {
     },
     async toAdventure(asset_id){
       try {
+        
         if (!this.isAutoAdventure){
+          return;
+        }
+        let panda = this.getPandaObj(asset_id)
+        if (panda.timer*1000 > new Date().getTime()){
           return;
         }
         const result = await this.$wax.api.transact({
@@ -310,13 +325,13 @@ export default {
           bam = '0.0000 BAM';
         }
         this.show_logmsg('Panda-'+ asset_id + ' Got ' + bam);
-        // wait untill this panda's time change
-        await this.untillPandaChanged(this.getPandaObj(asset_id).row.timer);
+        // wait untill this panda status is changed
+        await this.untillPandaChanged(asset_id);
       } catch (error) {
         this.show_logmsg('Adventure Error: ' + error);
         this.$notify.error({title:'Adventure Error', message: error});
         await sleep(30000);
-        // retry adventure
+        // retry
         await this.toAdventure(asset_id);
       }
     },
@@ -336,12 +351,18 @@ export default {
       }
 
     },
-    async untillPandaChanged(){//reload Slots
+    async untillPandaChanged(asset_id){
       try {
-        let pandasData_json = JSON.stringify(this.pandasData); // save current pandasData
-        while (pandasData_json == JSON.stringify(this.pandasData)){ //parse pandasData is changed?
+        let panda_json = JSON.stringify(this.getPandaObj(asset_id)); // save current panda Data
+        while (panda_json == JSON.stringify(this.getPandaObj(asset_id))){ //parse panda Data is changed?
           await sleep(30000);
-          this.getSlots();
+          console.log(`untillPandaChanged-${asset_id}`);
+          await this.getSlots();
+          // check this panda is allright
+          let panda = this.getPandaObj(asset_id)
+          if (panda.energy > 10 && panda.timer*1000 > new Date().getTime()){
+            break;
+          }
           await sleep(1000);
         }
       } catch (error) {
@@ -352,12 +373,13 @@ export default {
     },
     async getFoods(){
       try {
-        let new_foodsData = {};
+        this.foodsData = {};
         let result = await this.$assetApi.getAssets({
           owner: this.$wax.userAccount,
           collection_name: "nftpandawaxp",
           schema_name: "food",
         });
+        console.log('getFoods result:', result);
         result.forEach(element => {
           let food = {
             assetid: element.asset_id,
@@ -365,12 +387,11 @@ export default {
             rarity: element.data.rarity,
           };
           // is food's rarity exist
-          if (!this.new_foodsData[element.data.rarity]){
-            this.new_foodsData[element.data.rarity] = new Array();
+          if (!this.foodsData[element.data.rarity]){
+            this.foodsData[element.data.rarity] = new Array();
           }
-          this.new_foodsData[element.data.rarity].push(food);
+          this.foodsData[element.data.rarity].push(food);
         });
-        this.foodsData = new_foodsData;
         console.log('foodsData', this.foodsData);
       } catch (error) {
         this.show_logmsg('Get Foods Error: '+ error);
@@ -379,21 +400,34 @@ export default {
     },
     async feedFood(){
       try {
-        this.pandasData.forEach(async element => {
-          let food_id;
-          if (parseInt(element.energy/100) <= this.feedFoodEnergy) {
-            if ((!this.foodsData[element.asset.data.rarity]) || (this.foodsData[element.asset.data.rarity].length == 0)) {
-              // is deosn't have rarity food? || // check is rarity food empty
-              this.show_logmsg(`${element.asset.data.rarity} Food dont enough, We need more.`);
-              // to buy food
-              await this.buyFood(element.asset.data.rarity, this.autoBuyQuantity);
-            }else{
-              // take the first food's assetid
-              food_id = this.foodsData[element.asset.data.rarity].shift().assetid
-            }
-          }else{
-            return;
+        console.log('Looking for hungry panda.', this.pandasData);
+        for (let index = 0; index < this.pandasData.length; index++) {
+          
+          while (!this.pandasData[index]){
+            await sleep(1000)
           }
+          const panda = this.pandasData[index];
+          console.log('is this panda hungry?:', panda);
+          let food_id;
+          if (parseInt(panda.energy/100) <= this.feedFoodEnergy) {
+            if ((!this.foodsData[panda.asset.data.rarity]) || (this.foodsData[panda.asset.data.rarity].length == 0)) {
+              // is deosn't have rarity food? || // check is rarity food empty
+              this.show_logmsg(`${panda.asset.data.rarity} Food dont enough, We need more.`);
+              // to buy food
+              await this.buyFood(panda.asset.data.rarity, this.autoBuyQuantity);
+            }
+            // take the first food's assetid
+            food_id = this.foodsData[panda.asset.data.rarity][0].assetid
+          }else{
+            continue;
+          }
+          this.show_logmsg(`Panda ${panda.asset_id}'s Energy blow 10 , We Have ${panda.asset.data.rarity} * ${ this.foodsData[panda.asset.data.rarity].length } Food.`);
+          console.log('feed food transaction data: ', {
+                  asset_ids: [food_id], // food_id
+                  memo: `eatpanda ${panda.asset_id} ${food_id} `,
+                  from: this.$wax.userAccount,
+                  to: 'nftpandawofg',
+                });
           const result = await this.$wax.api.transact(
           {
             actions: [{
@@ -405,7 +439,7 @@ export default {
                 }],
                 data: { // action argments
                   asset_ids: [food_id], // food_id
-                  memo: `eatpanda ${element.assetid} ${food_id} `,
+                  memo: `eatpanda ${panda.asset_id} ${food_id} `,
                   from: this.$wax.userAccount,
                   to: 'nftpandawofg',
                 },
@@ -415,18 +449,14 @@ export default {
             expireSeconds: 30
           }); 
           console.log('Feed Food Result:', result);
-          this.show_logmsg(`Panda ${element.assetid} Ate 1 Food.`);
-          this.$notify.success({title:'Feed Food Success', message: `Panda ${element.assetid} Feed Food Success`});
+          this.show_logmsg(`Panda ${panda.asset_id} Ate 1 Food.`);
+          this.$notify.success({title:'Feed Food Success', message: `Panda ${panda.asset_id} Feed Food Success`});
           // refresh foodsData
           await this.refreshFoodsData();
-        });
-        
+        }
       } catch (error) {
         this.show_logmsg('Feed Food Error: '+error);
         this.$notify.error({title:'Feed Food Error', message: error});
-      } finally {
-        // refresh foodsData and pandasData
-        await this.getSlots()
       }
     },
     async buyFood(rarity, quantity){
@@ -483,6 +513,7 @@ export default {
         let foodsData_json = JSON.stringify(this.foodsData); // save current foodsData
         while (foodsData_json == JSON.stringify(this.foodsData)){ //parse foodsData is changed?
           await sleep(3000);
+          console.log(`untillFoodsChanged`);
           await this.getFoods();
         }
       } catch (error) {
@@ -494,7 +525,7 @@ export default {
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-11-22 11:14, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-11-24 06:25, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
