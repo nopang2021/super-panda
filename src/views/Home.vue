@@ -133,7 +133,7 @@
                     v-model="autoBuyQuantity" 
                     show-input
                     :min="1"
-                    :max="10"
+                    :max="50"
                   />
                 </el-col>
               </el-row>
@@ -196,24 +196,6 @@ export default {
     show_logmsg(msg){
       this.logmsg = dayjs().format('YYYY-MM-DD HH:mm:ssZ') + ' ' + msg + '\r\n<br>' + this.logmsg;      
     },
-    async getFoodCost(rarity, quantity){
-      switch (rarity) {
-        case "Common":
-          return quantity * 0.11;
-        case "Uncommon":
-          return quantity * 0.22;
-        case "Rare":
-          return quantity * 0.6;
-        case "Epic":
-          return quantity * 1;
-        case "Legendary":
-          return quantity * 4;
-        case "Mythic":
-          return quantity * 12;
-        default:
-          break;
-      }
-    },
     async loginWallet(){
       try {
         this.userAccount = await this.$wax.login();
@@ -222,128 +204,72 @@ export default {
         this.isNotLogin = false;
         this.$notify.success({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", duration: 0});
       } catch (error) {
-        this.show_logmsg(error);
+        this.show_logmsg('Login Error: '+error);
         this.$notify.error({title:'Login Error', message: error});
       }
     },
-    async getPandaObj(asset_id){
+    async getSlots(){
       try {
-        let e = {};
-        this.pandasData.forEach(element => {
-          if (element.assoc_id == asset_id){
-            e = element;
-            return;
+        // getFoods
+        await this.getFoods()
+        let new_pandasData;
+        // getSlots
+        let result = await this.$wax.rpc.get_table_rows({
+          json:true,
+          code:"nftpandawofg",
+          scope:"nftpandawofg",
+          table:"usersnew",
+          table_key:"",
+          lower_bound: this.$wax.userAccount,
+          upper_bound: this.$wax.userAccount,
+          index_position: 1,
+          key_type: "",
+          limit: 1,
+          reverse: false,
+          show_payer: false
+        });
+        const slotSort = result.rows[0].slots_count
+        new_pandasData.length = result.rows[0].max_slots;
+        // console.log('slotSort', slotSort);
+
+        // get pandas
+        result = await this.$wax.rpc.get_table_rows({
+          code: "nftpandawofg",
+          index_position: 2,
+          json: true,
+          key_type: "i64",
+          limit: -1,
+          lower_bound: this.$wax.userAccount,
+          reverse: true,
+          scope: "nftpandawofg",
+          show_payer: false,
+          table: "nftsongamec",
+          table_key: "",
+          upper_bound: this.$wax.userAccount,
+        });
+        result.rows.forEach(async element => {
+          if (element.is_in_slot == 1) {
+            // get panda's slotnumber
+            for (let slotnumber = 0; slotnumber < slotSort.length; slotnumber){
+              let panda_id = slotSort[slotnumber];
+              if (panda_id == element.asset_id) {
+                element.asset = await this.$assetApi.getAsset(element.asset_id);
+                new_pandasData[slotnumber] = element;
+              }
+            }
           }
         });
-        return e;
-      } catch (error) {
-        this.show_logmsg(error);
-        this.$notify.error({title:'Get Panda Object Error', message: error});
-      }
-
-    },
-    async reload(){
-      try {
-        await sleep(1000);
-        this.getSlots();
-        await sleep(1000);
-      } catch (error) {
-        this.show_logmsg(error);
-        this.$notify.error({title:'Reload Error', message: error});
-      }
-      
-    },
-    async feedFood(asset_id, food_id){
-      try {
-        console.log({
-          actions: [{
-              account: 'atomicassets', // contract account
-              name: 'transfer', // contract action name
-              authorization: [{
-                actor: this.$wax.userAccount,
-                permission: 'active',
-              }],
-              data: { // action argments
-                asset_ids: [food_id], // food_id
-                memo: `eatpanda ${asset_id} ${food_id} `,
-                from: this.$wax.userAccount,
-                to: 'nftpandawofg',
-              },
-          }],
-        },{
-          blocksBehind: 3,
-          expireSeconds: 30
-        });
-        const result = await this.$wax.api.transact(
-        {
-          actions: [{
-              account: 'atomicassets', // contract account
-              name: 'transfer', // contract action name
-              authorization: [{
-                actor: this.$wax.userAccount,
-                permission: 'active',
-              }],
-              data: { // action argments
-                asset_ids: [food_id], // food_id
-                memo: `eatpanda ${asset_id} ${food_id} `,
-                from: this.$wax.userAccount,
-                to: 'nftpandawofg',
-              },
-          }],
-        },{
-          blocksBehind: 3,
-          expireSeconds: 30
-        }); 
-        console.log('Feed Food:',result);
-        this.$notify.success({title:'Feed Food Success', message: `Panda ${asset_id} Feed Food Success`});
-        // refresh foodsData
-        this.refreshFoodsData();
-      } catch (error) {
-        this.show_logmsg(error);
-        this.$notify.error({title:'Feed Food Error', message: error});
-      }
-    },
-    async refreshFoodsData() {
-      try {
-        let foodsData_json = JSON.stringify(this.foodsData);
-        while (foodsData_json == JSON.stringify(this.foodsData)){
-          await sleep(1000);
-          this.getFoods();
+        this.showPandasData = false;
+        this.pandasData = new_pandasData;
+        this.showPandasData = true;
+        console.log('pandasData:', this.pandasData);
+        // is Auto-Feed Food?
+        if (this.isAutoFeedFood) {
+          await this.feedFood();
         }
       } catch (error) {
-        this.show_logmsg(error);
-        this.$notify.error({title:'Refresh FoodsData Error', message: error});
-      }
-    },
-    async buyFood(rarity, quantity){
-      try {
-        const result = await this.$wax.api.transact({
-          actions: [{
-              account: 'nftpandabamb', // contract account
-              name: 'transfer', // contract action name
-              authorization: [{
-                actor: this.$wax.userAccount,
-                permission: 'active',
-              }],
-              data: { // action argments
-                memo: `buyeat ${rarity.toLowerCase()} ${quantity} `,
-                quantity: `${(await this.getFoodCost(rarity,quantity)).toFixed(4)} BAM`,
-                from: this.$wax.userAccount,
-                to: 'nftpandawofg',
-              },
-          }],
-        },{
-          blocksBehind: 3,
-          expireSeconds: 30
-        });
-        console.log('buyFood:',result);
-        this.show_logmsg(`Buy ${rarity} Food * ${quantity} Success`);
-        this.$notify.success({title:'Buy Food Success', message: `Buy ${rarity} Food * ${quantity} Success`});
-        // refresh foodsData
-        this.refreshFoodsData();
-      } catch (error) {
-        this.show_logmsg(error);
-        this.$notify.error({title:'Buy Food Error', message: error});
+        this.show_logmsg('Get Slots Error: '+error);
+        this.$notify.error({title:'Get Slots Error', message: error});
       }
     },
     async toAdventure(asset_id){
@@ -384,17 +310,49 @@ export default {
           bam = '0.0000 BAM';
         }
         this.show_logmsg('Panda-'+ asset_id + ' Got ' + bam);
-        this.reload(asset_id);
+        // wait untill this panda's time change
+        await this.untillPandaChanged(this.getPandaObj(asset_id).row.timer);
       } catch (error) {
-        this.show_logmsg(error);
+        this.show_logmsg('Adventure Error: ' + error);
         this.$notify.error({title:'Adventure Error', message: error});
-        await sleep(1000);
-        this.reload(asset_id);
+        await sleep(30000);
+        // retry adventure
+        await this.toAdventure(asset_id);
       }
+    },
+    async getPandaObj(asset_id){
+      try {
+        let e;
+        this.pandasData.forEach(element => {
+          if (element.asset_id == asset_id){
+            e = element;
+            return;
+          }
+        });
+        return e;
+      } catch (error) {
+        this.show_logmsg('Get Panda Object Error: ' + error);
+        this.$notify.error({title:'Get Panda Object Error', message: error});
+      }
+
+    },
+    async untillPandaChanged(){//reload Slots
+      try {
+        let pandasData_json = JSON.stringify(this.pandasData); // save current pandasData
+        while (pandasData_json == JSON.stringify(this.pandasData)){ //parse pandasData is changed?
+          await sleep(30000);
+          this.getSlots();
+          await sleep(1000);
+        }
+      } catch (error) {
+        this.show_logmsg('Untill Panda Changed Error: '+ error);
+        this.$notify.error({title:'Untill Panda Changed Error', message: error});
+      }
+      
     },
     async getFoods(){
       try {
-        this.foodsData = {};
+        let new_foodsData = {};
         let result = await this.$assetApi.getAssets({
           owner: this.$wax.userAccount,
           collection_name: "nftpandawaxp",
@@ -407,87 +365,129 @@ export default {
             rarity: element.data.rarity,
           };
           // is food's rarity exist
-          if (!this.foodsData[element.data.rarity]){
-            this.foodsData[element.data.rarity] = new Array();
+          if (!this.new_foodsData[element.data.rarity]){
+            this.new_foodsData[element.data.rarity] = new Array();
           }
-          this.foodsData[element.data.rarity].push(food);
+          this.new_foodsData[element.data.rarity].push(food);
         });
+        this.foodsData = new_foodsData;
         console.log('foodsData', this.foodsData);
       } catch (error) {
-        this.show_logmsg(error);
+        this.show_logmsg('Get Foods Error: '+ error);
         this.$notify.error({title:'Get Foods Error', message: error});
       }
     },
-    async getSlots(){
+    async feedFood(){
       try {
-        // getFoods
-        this.getFoods()
-        // getSlots
-        let result = await this.$wax.rpc.get_table_rows({
-          json:true,
-          code:"nftpandawofg",
-          scope:"nftpandawofg",
-          table:"usersnew",
-          table_key:"",
-          lower_bound: this.$wax.userAccount,
-          upper_bound: this.$wax.userAccount,
-          index_position: 1,
-          key_type: "",
-          limit: 1,
-          reverse: false,
-          show_payer: false
-        });
-        const slotSort = result.rows[0].slots_count
-        this.pandasData.length = result.rows[0].max_slots;
-        // console.log('slotSort', slotSort);
-
-        // get pandas
-        result = await this.$wax.rpc.get_table_rows({
-          code: "nftpandawofg",
-          index_position: 2,
-          json: true,
-          key_type: "i64",
-          limit: -1,
-          lower_bound: this.$wax.userAccount,
-          reverse: true,
-          scope: "nftpandawofg",
-          show_payer: false,
-          table: "nftsongamec",
-          table_key: "",
-          upper_bound: this.$wax.userAccount,
-        });
-        result.rows.forEach(async element => {
-          if (element.is_in_slot == 1) {
-            // get panda's slotnumber
-            for (let index = 0; index < slotSort.length; index++) {
-              const pid = slotSort[index];
-              if (pid == element.asset_id) {
-                element.asset = await this.$assetApi.getAsset(element.asset_id);
-                // is Auto-Feed Food?
-                if (this.isAutoFeedFood) {
-                  if (parseInt(element.energy/100) <= this.feedFoodEnergy) {
-                    // is have rarity food?
-                    if (this.foodsData[element.asset.data.rarity]) {
-                      // feed food
-                      await this.feedFood(element.asset_id, this.foodsData[element.asset.data.rarity][0].assetid);
-                    }else{
-                      this.show_logmsg(`${element.asset.data.rarity} Food dont enough, We need more.`);
-                      // to buy food
-                      await this.buyFood(element.asset.data.rarity, this.autoBuyQuantity);
-                    }
-                  }
-                }
-                this.pandasData[index] = element;
-              }
+        this.pandasData.forEach(element => {
+          let food_id;
+          if (parseInt(element.energy/100) <= this.feedFoodEnergy) {
+            if ((!this.foodsData[element.asset.data.rarity]) || (this.foodsData[element.asset.data.rarity].length == 0)) {
+              // is deosn't have rarity food? || // check is rarity food empty
+              this.show_logmsg(`${element.asset.data.rarity} Food dont enough, We need more.`);
+              // to buy food
+              await this.buyFood(element.asset.data.rarity, this.autoBuyQuantity);
+            }else{
+              // take the first food's assetid
+              food_id = this.foodsData[element.asset.data.rarity].shift().assetid
             }
+          }else{
+            return;
           }
+          const result = await this.$wax.api.transact(
+          {
+            actions: [{
+                account: 'atomicassets', // contract account
+                name: 'transfer', // contract action name
+                authorization: [{
+                  actor: this.$wax.userAccount,
+                  permission: 'active',
+                }],
+                data: { // action argments
+                  asset_ids: [food_id], // food_id
+                  memo: `eatpanda ${element.assetid} ${food_id} `,
+                  from: this.$wax.userAccount,
+                  to: 'nftpandawofg',
+                },
+            }],
+          },{
+            blocksBehind: 3,
+            expireSeconds: 30
+          }); 
+          console.log('Feed Food Result:', result);
+          this.show_logmsg(`Panda ${element.assetid} Ate 1 Food.`);
+          this.$notify.success({title:'Feed Food Success', message: `Panda ${element.assetid} Feed Food Success`});
+          // refresh foodsData
+          await this.refreshFoodsData();
         });
-        this.showPandasData = false;
-        this.showPandasData = true;
-        // console.log('pandasData:', this.pandasData);
+        
       } catch (error) {
-        this.show_logmsg(error);
-        this.$notify.error({title:'Get Slots Error', message: error});
+        this.show_logmsg('Feed Food Error: '+error);
+        this.$notify.error({title:'Feed Food Error', message: error});
+      } finally {
+        // refresh foodsData and pandasData
+        await this.getSlots()
+      }
+    },
+    async buyFood(rarity, quantity){
+      try {
+        const result = await this.$wax.api.transact({
+          actions: [{
+              account: 'nftpandabamb', // contract account
+              name: 'transfer', // contract action name
+              authorization: [{
+                actor: this.$wax.userAccount,
+                permission: 'active',
+              }],
+              data: { // action argments
+                memo: `buyeat ${rarity.toLowerCase()} ${quantity} `,
+                quantity: `${(await this.getFoodCost(rarity,quantity)).toFixed(4)} BAM`,
+                from: this.$wax.userAccount,
+                to: 'nftpandawofg',
+              },
+          }],
+        },{
+          blocksBehind: 3,
+          expireSeconds: 30
+        });
+        console.log('buyFood:',result);
+        this.show_logmsg(`Buy ${rarity} Food * ${quantity} Success`);
+        this.$notify.success({title:'Buy Food Success', message: `Buy ${rarity} Food * ${quantity} Success`});
+        // wait foodsData changed then return
+        await this.refreshFoodsData();
+      } catch (error) {
+        this.show_logmsg('Buy Food Error: '+error);
+        this.$notify.error({title:'Buy Food Error', message: error});
+      }
+    },
+    async getFoodCost(rarity, quantity){
+      switch (rarity) {
+        case "Common":
+          return quantity * 0.11;
+        case "Uncommon":
+          return quantity * 0.22;
+        case "Rare":
+          return quantity * 0.6;
+        case "Epic":
+          return quantity * 1;
+        case "Legendary":
+          return quantity * 4;
+        case "Mythic":
+          return quantity * 12;
+        default:
+          break;
+      }
+    },
+    async refreshFoodsData() {
+      try {
+        let foodsData_json = JSON.stringify(this.foodsData); // save current foodsData
+        while (foodsData_json == JSON.stringify(this.foodsData)){ //parse foodsData is changed?
+          await sleep(3000);
+          await this.getFoods();
+        }
+      } catch (error) {
+        this.show_logmsg('Refresh FoodsData Error: '+error);
+        this.$notify.error({title:'Refresh FoodsData Error', message: error});
       }
     },
   },
