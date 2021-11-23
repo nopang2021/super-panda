@@ -379,7 +379,7 @@ export default {
     },
     async feedFood(){
       try {
-        this.pandasData.forEach(element => {
+        this.pandasData.forEach(async element => {
           let food_id;
           if (parseInt(element.energy/100) <= this.feedFoodEnergy) {
             if ((!this.foodsData[element.asset.data.rarity]) || (this.foodsData[element.asset.data.rarity].length == 0)) {
