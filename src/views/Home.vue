@@ -288,7 +288,11 @@ export default {
         if (!this.isAutoAdventure){
           return;
         }
-        let panda = this.getPandaObj(asset_id)
+        let panda = await this.getPandaObj(asset_id);
+        while (!panda){
+            await sleep(1000);
+          }
+        console.log(`toAdventure ? panda timer ${panda.timer*1000} now ${new Date().getTime()}`);
         if (panda.timer*1000 > new Date().getTime()){
           return;
         }
@@ -330,8 +334,8 @@ export default {
       } catch (error) {
         this.show_logmsg('Adventure Error: ' + error);
         this.$notify.error({title:'Adventure Error', message: error});
-        await sleep(30000);
         // retry
+        await sleep(Math.floor(Math.random()*10**5)+1)
         await this.toAdventure(asset_id);
       }
     },
@@ -359,8 +363,12 @@ export default {
           console.log(`untillPandaChanged-${asset_id}`);
           await this.getSlots();
           // check this panda is allright
-          let panda = this.getPandaObj(asset_id)
-          if (panda.energy > 10 && panda.timer*1000 > new Date().getTime()){
+          let panda = await this.getPandaObj(asset_id);
+          if (!panda.energy){
+            await sleep(1000);
+          }
+          console.log(`untillPandaChanged if ${panda.energy/100} > 10 and ${ panda.timer*1000} > ${new Date().getTime()}`);
+          if (panda.energy/100 > 10 && panda.timer*1000 > new Date().getTime()){
             break;
           }
           await sleep(1000);
@@ -457,6 +465,9 @@ export default {
       } catch (error) {
         this.show_logmsg('Feed Food Error: '+error);
         this.$notify.error({title:'Feed Food Error', message: error});
+        // retry
+        await sleep(Math.floor(Math.random()*10**4)+1)
+        await this.feedFood()
       }
     },
     async buyFood(rarity, quantity){
@@ -488,6 +499,9 @@ export default {
       } catch (error) {
         this.show_logmsg('Buy Food Error: '+error);
         this.$notify.error({title:'Buy Food Error', message: error});
+        //retry
+        await sleep(Math.floor(Math.random()*10**4)+1);
+        await this.buyFood(rarity, quantity);
       }
     },
     async getFoodCost(rarity, quantity){
@@ -514,7 +528,7 @@ export default {
         while (foodsData_json == JSON.stringify(this.foodsData)){ //parse foodsData is changed?
           await sleep(3000);
           console.log(`untillFoodsChanged`);
-          await this.getFoods();
+          await this.getSlots();
         }
       } catch (error) {
         this.show_logmsg('Refresh FoodsData Error: '+error);
@@ -525,7 +539,7 @@ export default {
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-11-24 06:25, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-11-25 01:02, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
