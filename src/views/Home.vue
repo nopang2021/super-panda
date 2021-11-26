@@ -1,11 +1,11 @@
 <template>
-  <div class="home">
+  <div class="home" style="background-color: #f4f5f7;color: #6b778c;">
     <h1>{{status}}</h1>
-    <div style="width: 800px; margin: auto;">
+    <div style="width: 900px; margin: auto;">
       <el-button  type="primary" v-if="isNotLogin" @click="loginWallet()">Login Wax Wallet</el-button>
       <el-button  type="warning" v-else @click="getSlots()">Get Your Power!</el-button>
       <div style="margin-top: 50px;">
-        <el-tabs type="border-card">
+        <el-tabs :tab-position="'left'">
           <!--Heros-->
           <el-tab-pane  label="Heros">
             <template #label>
@@ -14,8 +14,8 @@
               </span>
             </template>
             <el-table border v-if="showPandasData" :data="pandasData" stripe style="width: 100%">
-              <el-table-column prop="asset_id" label="PandaId" width="160px" />
-              <el-table-column label="Img" width="160px">
+              <el-table-column prop="asset_id" label="PandaId" width="125px" />
+              <el-table-column label="Img" width="125px">
                 <template #default="scope">
                   <el-image
                     style="width: 100px; height: 100px"
@@ -23,7 +23,7 @@
                     :src="'https://ipfs.atomichub.io/ipfs/'+scope.row.asset.data.img+'/'"
                     >
                     <template #placeholder>
-                      <div style="width: 100%; height: 100%" 
+                      <div style="width: 100%;" 
                         element-loading-background="rgba(192,192,192,0.3)" 
                         v-loading="true" 
                         element-loading-text="Loading..."
@@ -33,8 +33,15 @@
                   </el-image>
                 </template>
               </el-table-column>
-              <el-table-column prop="asset.data.rarity" label="Rarity" width="180px"/>
-              <el-table-column label="Energy" width="100px">
+              <el-table-column prop="asset.data.rarity" label="Rarity" width="100px"/>
+              <el-table-column prop="lvl" label="Rank" width="60px"/>
+              <el-table-column label="Stake" width="80px">
+                <template #default="scope">{{(scope.row.stake_count/10000).toFixed(4)}}<br>BAM</template>
+              </el-table-column>
+              <el-table-column label="Steps" width="80px">
+                <template #default="scope"> {{scope.row.steps}}/{{getNeedSteps(scope.row.lvl)}}</template>
+              </el-table-column>
+              <el-table-column label="Energy" width="80px">
                 <template #default="scope">{{ parseInt(scope.row.energy/100) }}%</template>
               </el-table-column>
               <el-table-column label="Time" width="150px">
@@ -137,6 +144,17 @@
                   />
                 </el-col>
               </el-row>
+              <el-row style="margin-top: 10px;" >
+                <el-col :span="4"></el-col>
+                <el-col :span="8">Auto Stake BAM&Rank Level Up:</el-col>
+                <el-col :span="8">
+                  <el-switch 
+                    v-model="isAutoRankUP" 
+                    active-color="#13ce66" 
+                  />
+                </el-col>
+                <el-col :span="4"></el-col>
+              </el-row>
             </div>
           </el-tab-pane>
           <!--Output-->
@@ -185,6 +203,7 @@ export default {
       isAutoAdventure: true,
       isAutoFeedFood: true,
       isAutoBuyFood: true,
+      isAutoRankUP: true,
       feedFoodEnergy: 10,
       autoBuyQuantity: 1,
     }
@@ -202,7 +221,8 @@ export default {
         this.pubKeys = this.$wax.pubKeys;
         this.status = 'Welcome Back! Dear ' + this.userAccount;
         this.isNotLogin = false;
-        this.$notify.success({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", duration: 0});
+        this.$notify.success({title:"Success", message: "Login Wax Wallet Success!Welcome Back!", duration: 10000});
+        await this.getSlots();
       } catch (error) {
         this.show_logmsg('Login Error: '+error);
         this.$notify.error({title:'Login Error', message: error});
@@ -210,15 +230,9 @@ export default {
     },
     async getSlots(){
       try {
-        // new account init
-        // stake cpu ram net 
-        // buy promo hero
-        // login panda
-        // use panda in game
-        // insert panda in slot
-        // pop adventure,usefood,buyfood Auto Sign 
         // getFoods
         await this.getFoods()
+        // empty this.pandasData
         this.pandasData = [];
         // getSlots
         let result = await this.$wax.rpc.get_table_rows({
@@ -236,9 +250,8 @@ export default {
           show_payer: false
         });
         console.log('slotSort Result:', result);
-        this.pandasData.length = result.rows[0].max_slots;
-        const slotSort = result.rows[0].slots_count
-
+        const slotSort = result.rows[0].slots_count;
+        const max_slots = result.rows[0].max_slots;
         // get pandas
         result = await this.$wax.rpc.get_table_rows({
           code: "nftpandawofg",
@@ -256,43 +269,273 @@ export default {
         });
         console.log('pandas Result:', result);
 
-        result.rows.forEach(async element => {
-          if (element.is_in_slot == 1) {
-            // get panda's slotnumber
-            for (let slotnumber = 0; slotnumber < slotSort.length; slotnumber++){
-              let panda_id = slotSort[slotnumber];
-              if (panda_id == element.asset_id) {
-                element.asset = await this.$assetApi.getAsset(element.asset_id);
-                this.pandasData[slotnumber] = element;
-              }
+        for (let slotnumber = 0; slotnumber < max_slots; slotnumber++){
+          for (let index = 0; index < result.rows.length; index++) {
+            const element = result.rows[index];
+            if (element.asset_id == slotSort[slotnumber]) {
+              let asset = await this.$assetApi.getAsset(element.asset_id);
+              element.asset = asset;
+              console.log(slotnumber);
+              this.pandasData.push(element);
             }
           }
-        });
-        
+        }
+
         this.showPandasData = false;
         this.showPandasData = true;
         console.log('pandasData:', this.pandasData);
-
         // is Auto-Feed Food?
         if (this.isAutoFeedFood) {
-          this.feedFood(); // don't await
+          await this.feedFood();
         }
       } catch (error) {
         this.show_logmsg('Get Slots Error: '+error);
         this.$notify.error({title:'Get Slots Error', message: error});
+        // retry
+        let sleeptime = Math.floor(Math.random()*10**5)+1;
+        console.log(`getSlots retry sleep ${(sleeptime/1000).toFixed(2)}s`);
+        await sleep(sleeptime);
+        await this.getSlots();
+      }
+    },
+    async getRank(panda){
+      try {
+        let sleeptime = Math.floor(Math.random()*10**5)+1;
+        console.log(`getRank sleep ${(sleeptime/1000).toFixed(2)}s`);
+        await sleep(sleeptime);
+        // check steps
+        while(!panda){
+          await sleep(1000);
+        }
+        await sleep(Math.floor(Math.random()*10**5)+1);
+        console.log(`is this panda can level up? ${panda.steps} >= ${this.getNeedSteps(panda.lvl)}`);
+        if(panda.steps >= this.getNeedSteps(panda.lvl)){
+          //check bam stake
+          let needBam = this.getNeedBam(panda.lvl, panda.rarity);
+          console.log(`is this panda's BAM enough to level up? ${panda.stake_count/10000} < ${needBam}`);
+          if(panda.stake_count/10000 < needBam){
+            //to stake bam
+            await this.pandaStakeBam(panda, needBam-panda.stake_count/10000);
+            await this.untillPandaChanged(panda.asset_id);
+          }
+          // tolvlup
+          await this.pandaLvlUp(panda);
+          await this.untillPandaChanged(panda.asset_id);
+        }
+      } catch (error) {
+        console.log('getRank Error: '+error)
+        this.show_logmsg('getRank Error: '+error);
+        this.$notify.error({title:'getRank Error', message: error});
+      }
+    },
+    getNeedSteps(lvl){
+      switch (lvl) {
+        case 0:
+          return 8;
+        case 1:
+          return 13;
+        case 2:
+          return 21;
+        case 3:
+          return 34;
+        case 4:
+          return 55;
+        case 5:
+          return 89;
+        case 6:
+          return 144;
+        case 7:
+          return 233;
+        case 8:
+          return 377;
+        case 9:
+          return 610;
+        case 10:
+          return 987;
+        case 11:
+          return 1597;
+        default:
+          return 9999;
+      }
+    },
+    getNeedBam(lvl, rarity){
+      let bam = [
+        [
+          0.87,
+          2.29,
+          4.58,
+          8.29,
+          14.29,
+          24,
+          39.71,
+          65.13,
+          106.26,
+          172.39,
+          280.07,
+          454.29,
+        ],[
+          1.44,
+          3.78,
+          7.56,
+          13.68,
+          23.58,
+          39.58,
+          65.5,
+          107.44,
+          175.3,
+          285.1,
+          462.76,
+          750.22,
+        ],[
+          1.77,
+          4.66,
+          9.33,
+          16.89,
+          29.11,
+          48.89,
+          80.89,
+          132.67,
+          216.45,
+          352.01,
+          571.35,
+          926.24,
+        ],[
+          4.8,
+          12.6,
+          25.2,
+          45.6,
+          78.6,
+          132,
+          218.4,
+          358.2,
+          584.4,
+          920.4,
+          1512.6,
+          2470.8,
+        ],[
+          8,
+          21,
+          42,
+          76,
+          131,
+          220,
+          364,
+          597,
+          974,
+          1584,
+          2571,
+          4168,
+        ],[
+          32,
+          84,
+          168,
+          304,
+          524,
+          880,
+          1456,
+          2388,
+          3896,
+          6336,
+          10284,
+          16672,
+        ],[
+          96,
+          252,
+          504,
+          912,
+          1572,
+          2640,
+          4368,
+          7164,
+          11688,
+          19008,
+          30852,
+          50016,
+        ]
+      ];
+      let total = 0
+      for (let index = 0; index <= lvl; index++) {
+        const num = bam[rarity][index];
+        total += num;
+      }
+      return total;
+    },
+    async pandaStakeBam(panda, satke_quantity){
+      try {
+        this.show_logmsg(`tostake ${panda.asset_id} stake quantity ${satke_quantity}`);
+        console.log(`tostake ${panda.asset_id} stake quantity ${satke_quantity}`);
+        const result = await this.$wax.api.transact({
+          actions: [{
+              account: 'nftpandabamb', // contract account
+              name: 'transfer', // contract action name
+              authorization: [{
+                actor: this.$wax.userAccount,
+                permission: 'active',
+              }],
+              data: { // action argments
+                memo: panda.asset_id, // panda_id
+                from: this.$wax.userAccount,
+                to: "nftpandawofg",
+                quantity: `${satke_quantity.toFixed(4)} BAM`,
+              },
+          }]
+        }, {
+          blocksBehind: 3,
+          expireSeconds: 30
+        });
+        console.log('pandaStakeBam.result', result);  
+      } catch (error) {
+        this.show_logmsg('pandaStakeBam Error: '+ error);
+        this.$notify.error({title:'pandaStakeBam Error', message: error});
+      }
+    },
+    async pandaLvlUp(panda){
+      try {
+        while(!panda){
+          await sleep(1000)
+        }
+        this.show_logmsg(`pandaLvlUp ${panda.asset_id}`);
+        console.log(`pandaLvlUp ${panda.asset_id}`);
+        const result = await this.$wax.api.transact({
+          actions: [{
+              account: 'nftpandawofg', // contract account
+              name: 'lvlup', // contract action name
+              authorization: [{
+                actor: this.$wax.userAccount,
+                permission: 'active',
+              }],
+              data: { // action argments
+                asset_id: panda.asset_id, // panda_id
+                username: this.$wax.userAccount,
+              },
+          }]
+        }, {
+          blocksBehind: 3,
+          expireSeconds: 30
+        });
+        console.log('pandaLvlUp.result', result);  
+      } catch (error) {
+        this.show_logmsg('pandaLvlUp Error: '+ error);
+        this.$notify.error({title:'pandaLvlUp Error', message: error});
       }
     },
     async toAdventure(asset_id){
       try {
-        
+        let sleeptime=Math.floor(Math.random()*10**5)+1;
+        console.log(`toAdventrue sleep ${(sleeptime/1000).toFixed(2)}s`);
+        await sleep(sleeptime);
+        let panda = this.getPandaObj(asset_id);
+        while (!panda){
+            await sleep(1000);
+        }
+        if (this.isAutoRankUP){
+          await this.getRank(panda);
+        }
         if (!this.isAutoAdventure){
           return;
         }
-        let panda = await this.getPandaObj(asset_id);
-        while (!panda){
-            await sleep(1000);
-          }
-        console.log(`toAdventure ? panda timer ${panda.timer*1000} now ${new Date().getTime()}`);
+        
+        console.log(`toAdventure ${asset_id} timer ${panda.timer*1000} now ${new Date().getTime()}`);
         if (panda.timer*1000 > new Date().getTime()){
           return;
         }
@@ -317,14 +560,15 @@ export default {
         // console.log('toAdventure.result', result);
         let bam = 0;
         if (result.processed.action_traces.length != 0){
-          result.processed.action_traces.forEach(element => {
+          for (let index = 0; index < result.processed.action_traces.length; index++) {
+            const element = result.processed.action_traces[index];
             if (element.inline_traces.length != 0) {
               bam = element.inline_traces[0].act.data.quantity;
               return;
             }else{
               bam = '0.0000 BAM';
             }
-          });
+          }
         }else{
           bam = '0.0000 BAM';
         }
@@ -334,21 +578,22 @@ export default {
       } catch (error) {
         this.show_logmsg('Adventure Error: ' + error);
         this.$notify.error({title:'Adventure Error', message: error});
+        // wait untill this panda status is changed
+        await this.untillPandaChanged(asset_id);
         // retry
-        await sleep(Math.floor(Math.random()*10**5)+1)
+        await sleep(Math.floor(Math.random()*10**5)+1);
         await this.toAdventure(asset_id);
       }
     },
     async getPandaObj(asset_id){
       try {
-        let e;
-        this.pandasData.forEach(element => {
+        for (let index = 0; index < this.pandasData.length; index++) {
+          const element = this.pandasData[index];
           if (element.asset_id == asset_id){
-            e = element;
-            return;
+            return element;
           }
-        });
-        return e;
+        }
+        console.log('getPandaObj defeat')
       } catch (error) {
         this.show_logmsg('Get Panda Object Error: ' + error);
         this.$notify.error({title:'Get Panda Object Error', message: error});
@@ -357,25 +602,31 @@ export default {
     },
     async untillPandaChanged(asset_id){
       try {
-        let panda_json = JSON.stringify(this.getPandaObj(asset_id)); // save current panda Data
-        while (panda_json == JSON.stringify(this.getPandaObj(asset_id))){ //parse panda Data is changed?
-          await sleep(30000);
-          console.log(`untillPandaChanged-${asset_id}`);
-          await this.getSlots();
+        await sleep(1000)
+        let panda = this.getPandaObj(asset_id);
+        while(!panda){
+          await sleep(1000)
+        }
+        let panda_json = JSON.stringify(panda); // save current panda Data
+        while (panda_json === JSON.stringify(panda)){ //parse panda Data is changed?
           // check this panda is allright
-          let panda = await this.getPandaObj(asset_id);
-          if (!panda.energy){
-            await sleep(1000);
-          }
           console.log(`untillPandaChanged if ${panda.energy/100} > 10 and ${ panda.timer*1000} > ${new Date().getTime()}`);
           if (panda.energy/100 > 10 && panda.timer*1000 > new Date().getTime()){
             break;
           }
-          await sleep(1000);
+          await this.getSlots();
+          await sleep(Math.floor(Math.random()*10**4)+1)
+          panda = await this.getPandaObj(asset_id);
+          while(!panda){
+            await sleep(1000)
+          }
         }
       } catch (error) {
         this.show_logmsg('Untill Panda Changed Error: '+ error);
         this.$notify.error({title:'Untill Panda Changed Error', message: error});
+        // retry
+        await sleep(Math.floor(Math.random()*10**4)+1)
+        await this.untillPandaChanged(asset_id);
       }
       
     },
@@ -388,7 +639,8 @@ export default {
           schema_name: "food",
         });
         console.log('getFoods result:', result);
-        result.forEach(element => {
+        for (let index = 0; index < result.length; index++) {
+          const element = result[index];
           let food = {
             assetid: element.asset_id,
             img: element.data.img,
@@ -399,30 +651,33 @@ export default {
             this.foodsData[element.data.rarity] = new Array();
           }
           this.foodsData[element.data.rarity].push(food);
-        });
+        }
         console.log('foodsData', this.foodsData);
       } catch (error) {
         this.show_logmsg('Get Foods Error: '+ error);
         this.$notify.error({title:'Get Foods Error', message: error});
+        // retry
+        await sleep(Math.floor(Math.random()*10**5)+1)
+        await this.getFoods();
       }
     },
     async feedFood(){
       try {
         console.log('Looking for hungry panda.', this.pandasData);
         for (let index = 0; index < this.pandasData.length; index++) {
-          
           while (!this.pandasData[index]){
             await sleep(1000)
           }
           const panda = this.pandasData[index];
           console.log('is this panda hungry?:', panda);
+          await sleep(Math.floor(Math.random()*10**5)+1)
           let food_id;
           if (parseInt(panda.energy/100) <= this.feedFoodEnergy) {
             if ((!this.foodsData[panda.asset.data.rarity]) || (this.foodsData[panda.asset.data.rarity].length == 0)) {
               // is deosn't have rarity food? || // check is rarity food empty
               this.show_logmsg(`${panda.asset.data.rarity} Food dont enough, We need more.`);
               // to buy food
-              await this.buyFood(panda.asset.data.rarity, this.autoBuyQuantity);
+              this.buyFood(panda.asset.data.rarity, this.autoBuyQuantity);
             }
             // take the first food's assetid
             food_id = this.foodsData[panda.asset.data.rarity][0].assetid
@@ -460,13 +715,15 @@ export default {
           this.show_logmsg(`Panda ${panda.asset_id} Ate 1 Food.`);
           this.$notify.success({title:'Feed Food Success', message: `Panda ${panda.asset_id} Feed Food Success`});
           // refresh foodsData
-          await this.refreshFoodsData();
+          this.refreshFoodsData();
         }
       } catch (error) {
         this.show_logmsg('Feed Food Error: '+error);
         this.$notify.error({title:'Feed Food Error', message: error});
         // retry
-        await sleep(Math.floor(Math.random()*10**4)+1)
+        let sleeptime=Math.floor(Math.random()*10**4)+1;
+        console.log(`feedFood retry sleep ${(sleeptime/1000).toFixed(2)}s`);
+        await sleep(sleeptime);
         await this.feedFood()
       }
     },
@@ -482,7 +739,7 @@ export default {
               }],
               data: { // action argments
                 memo: `buyeat ${rarity.toLowerCase()} ${quantity} `,
-                quantity: `${(await this.getFoodCost(rarity,quantity)).toFixed(4)} BAM`,
+                quantity: `${(this.getFoodCost(rarity,quantity)).toFixed(4)} BAM`,
                 from: this.$wax.userAccount,
                 to: 'nftpandawofg',
               },
@@ -495,16 +752,16 @@ export default {
         this.show_logmsg(`Buy ${rarity} Food * ${quantity} Success`);
         this.$notify.success({title:'Buy Food Success', message: `Buy ${rarity} Food * ${quantity} Success`});
         // wait foodsData changed then return
-        await this.refreshFoodsData();
+        this.refreshFoodsData();
       } catch (error) {
         this.show_logmsg('Buy Food Error: '+error);
         this.$notify.error({title:'Buy Food Error', message: error});
         //retry
-        await sleep(Math.floor(Math.random()*10**4)+1);
-        await this.buyFood(rarity, quantity);
+        await sleep(Math.floor(Math.random()*10**5)+1);
+        this.buyFood(rarity, quantity);
       }
     },
-    async getFoodCost(rarity, quantity){
+    getFoodCost(rarity, quantity){
       switch (rarity) {
         case "Common":
           return quantity * 0.11;
@@ -533,19 +790,22 @@ export default {
       } catch (error) {
         this.show_logmsg('Refresh FoodsData Error: '+error);
         this.$notify.error({title:'Refresh FoodsData Error', message: error});
+        //retry
+        await sleep(Math.floor(Math.random()*10**5)+1);
+        await this.refreshFoodsData();
       }
     },
   },
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-11-25 01:02, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-11-26 17:00, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
         h('span', null, ' to reload cache.')
       ]),
-      duration: 0,
+      duration: 10000,
       showClose: true
     });
     // try to auto-logged
@@ -554,8 +814,10 @@ export default {
         this.userAccount = this.$wax.userAccount;
         this.pubKeys = this.$wax.pubKeys;
         this.isNotLogin = false;
-        this.$notify.success({title:"Success", message: "Auto-Login Wax Wallet Success!Welcome Back!", duration: 0});
+        this.$notify.success({title:"Success", message: "Auto-Login Wax Wallet Success!Welcome Back!", duration: 10000});
         this.status = 'Welcome Back! Dear ' + this.userAccount;
+        await sleep(Math.floor(Math.random()*10**3)+1)
+        await this.getSlots()
       }else{
         this.status = 'Your account not enable Auto-Logged in, Please Login your Wax Wallet';
       }

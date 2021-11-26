@@ -3,7 +3,8 @@ import * as assetjs from "atomicassets"
 
 export default {
   install:  (app) => {
-    const wax = new waxjs.WaxJS({rpcEndpoint: 'https://wax.greymass.com', tryAutoLogin: false});
+    const wax = new waxjs.WaxJS({rpcEndpoint: 'https://wax.greymass.com/', tryAutoLogin: false});
+    // const wax = new waxjs.WaxJS({rpcEndpoint: 'https://wax.hkeos.com/', tryAutoLogin: false});
     const assetApi = new assetjs.ExplorerApi("https://wax.api.atomicassets.io", "atomicassets", {fetch});
     app.provide('waxjs', waxjs);
     app.provide('assetjs', assetjs);
