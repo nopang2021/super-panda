@@ -5,6 +5,7 @@
       <el-button  type="primary" v-if="isNotLogin" @click="loginWallet()">Login Wax Wallet</el-button>
       <el-button  type="warning" v-if="isFirstRun" @click="loopThread()">Get Your Power!</el-button>
       <el-button  type="danger" v-else @click="stopLoopThread()">Stop</el-button>
+      <el-button src="https://discord.gg/tTudxGdZKh">Discord</el-button>
       <div style="margin-top: 50px;">
         <el-tabs :tab-position="'left'">
           <!--Heros-->
@@ -466,12 +467,13 @@ export default {
           50016,
         ]
       ];
-      let total = 0
-      for (let index = 0; index <= lvl; index++) {
-        const num = bam[rarity][index];
-        total += num;
-      }
-      return total;
+      // let total = 0
+      // for (let index = 0; index <= lvl; index++) {
+      //   const num = bam[rarity][index];
+      //   total += num;
+      // }
+      // return total;
+      return bam[rarity][lvl];
     },
     async pandaStakeBam(panda, satke_quantity){
       try {
@@ -538,15 +540,14 @@ export default {
         console.log('Looking for toAdventure panda.', this.pandasData);
         for (let index = 0; index < this.pandasData.length; index++) {
           const panda = this.pandasData[index];
-          if (this.isAutoRankUP){
-            await this.getRank(panda);
-          }
           // if now >=  panda.timer . then continue adventure 
           console.log(`is can toAdventure? ${panda.asset_id}  does timer ${dayjs().format('YYYY-MM-DD HH:mm:ssZ')} > ${dayjs(panda.timer*1000).format('YYYY-MM-DD HH:mm:ssZ')} ?`);
           console.log(`is can toAdventure? ${panda.asset_id}  does timer ${dayjs().valueOf()} > ${panda.timer*1000} ?`);
-          
           if (dayjs().valueOf() <= panda.timer*1000){
             continue;
+          }
+          if (this.isAutoRankUP){
+            await this.getRank(panda);
           }
           const result = await this.$wax.api.transact({
             actions: [{
@@ -748,7 +749,7 @@ export default {
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-11-27 16:10, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-12-01 10:53, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
