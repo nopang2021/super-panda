@@ -3,9 +3,9 @@
     <h1>{{status}}</h1>
     <div style="width: 900px; margin: auto;">
       <el-button  type="primary" v-if="isNotLogin" @click="loginWallet()">Login Wax Wallet</el-button>
-      <el-button  type="warning" v-if="isFirstRun" @click="loopThread()">Get Your Power!</el-button>
+      <el-button  type="warning" v-else-if="isFirstRun" @click="loopThread()">Get Your Power!</el-button>
       <el-button  type="danger" v-else @click="stopLoopThread()">Stop</el-button>
-      <el-button src="https://discord.gg/tTudxGdZKh">Discord</el-button>
+      <el-button  type="primary" @click="discord()">Join Our Discord</el-button>
       <div style="margin-top: 50px;">
         <el-tabs :tab-position="'left'">
           <!--Heros-->
@@ -216,6 +216,9 @@ export default {
     FlipDown
   },
   methods:{
+    discord(){
+      window.open('https://discord.gg/TNAg46CkzW','_blank');
+    },
     show_logmsg(msg){
       this.logmsg = dayjs().format('YYYY-MM-DD HH:mm:ssZ') + ' ' + msg + '\r\n<br>' + this.logmsg;      
     },
@@ -749,7 +752,7 @@ export default {
   created: async function(){
     this.$message.warning({
       message: h('p', null, [
-        h('span', null, 'This version Build at UTC+8 2021-12-01 10:53, If you wanna use '),
+        h('span', null, 'This version Build at UTC+8 2021-12-20 18:26, If you wanna use '),
         h('i', { style: 'color: teal' }, ' Latest '),
         h('span', null, ' version , Please press '),
         h('strong', { style: 'color: red'}, '[CTRL + SHIFT +R]'),
